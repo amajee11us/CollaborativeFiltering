@@ -1,16 +1,18 @@
-from data_loader import LoadNetflixData
+from data_loader import LoadNetflixData, MNISTloader
 from collab_filter import CollaborativeFiltering
+from classifier import DigitClassifier
 from utils import *
 import argparse
+from parameterFactory import pickBestParams
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Benchmark for comparing Submodular Functions against Continuous Learning functions')
 
     # General parser
-    parser.add_argument('-g',
+    parser.add_argument('-q',
                         '--question',
-                        dest='dataset_format',
+                        dest='question',
                         type=int,
                         default=1,
                         help='The question number of the problem.')
@@ -22,19 +24,10 @@ def parse_args():
                         default='SVC',
                         type=str,
                         help='For question 2 only. Name of the model for which experiment is triggered. Example : SVC')
-    parser.add_argument('--num_iters',
-                        default=1000,
-                        type=int,
-                        help='Number of iterations to train your model for. Enter a value between 0 to 50k.')
-    parser.add_argument('--learning_rate',
-                        default=0.01,
-                        type=float,
-                        help='The initial learning rate for the model. Set it between 0 and 1.')
-    parser.add_argument('--reg_const',
-                        default=0.5,
-                        type=float,
-                        help='The regularization constant for the model. Set it between 0 and 1.')
-
+    parser.add_argument('--no_tuning',
+                        default=False,
+                        type=bool,
+                        help='Choose to perform or ignore tuning the model. Only applicable for question 2')
     args = parser.parse_args()
     return args
 
@@ -71,7 +64,7 @@ if __name__ == "__main__":
         labels = testDataset.rawRatings
 
         # calculate and display metrics 
-        mae, rmse = getPerformanceScores(predictions, labels)
+        mae, rmse = getPerformanceScores(predictions, labels, "collab")
 
         # display the results
         print("Results from the experiment -->")
@@ -80,3 +73,29 @@ if __name__ == "__main__":
         '''
         Execution of question2 : SVC, MLP and k-NN problem
         '''
+
+        # Data loader class for MNIST dataset 
+        print("Loading MNIST dataset ...")
+        data_loader = MNISTloader(dataset_name = args.dataset_name, num_classes=10)
+        print("Done.")
+        
+        print("Loading Model ...")
+        model = DigitClassifier(model_name=args.model_name, num_classes=10)
+        print("Done.")
+
+        if args.no_tuning:
+            print("Starting Model Trainval ...")
+            final_params = pickBestParams(args.model_name)
+        else:
+            print("Starting Model Tuning ...")
+            final_params = model.tune(data_loader.X_train, data_loader.Y_train, 
+                                      data_loader.X_test, data_loader.Y_test)
+            print("Done.")
+        predictions = model.trainval(data_loader.X_train, data_loader.Y_train, 
+                                      data_loader.X_test, data_loader.Y_test,
+                                      final_params)
+        print("Done.")
+
+        metrics = getPerformanceScores(predictions, data_loader.Y_test, "classifier")
+        printResults(result_row=[x for x in metrics], table_columns=model.pred_metrics)
+        

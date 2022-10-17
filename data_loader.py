@@ -65,18 +65,15 @@ class MNISTloader:
         X, y = fetch_openml(dataset_name, version=1, return_X_y=True)
 
         # Scale dataset
-        X = self.__scale_dataset(X)
+        X = X/255
 
         self.X_train, self.Y_train, self.X_test, self.Y_test = self.getData(X, y)
 
-    def __scale_dataset(x):
-        return x/255
-
     def getData(self, X, y):
-        X_train = self.X[:60000]
-        X_test = self.X[60000:]
+        X_train = X[:60000]
+        X_test = X[60000:]
 
-        Y_train = self.y[:60000]
-        Y_test = self.y[60000:]
+        Y_train = y[:60000]
+        Y_test = y[60000:]
 
-        return X_train, Y_train, X_test, Y_test
+        return X_train.values, Y_train, X_test.values, Y_test
